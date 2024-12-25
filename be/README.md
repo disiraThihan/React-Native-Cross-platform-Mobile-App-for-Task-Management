@@ -1,0 +1,3 @@
+# How we keep track of schedules
+For each user in a room. A schedule is maintained if and only if the day that schedule is assigned for has any tasks.
+Any time a task is changed, all relevant users are gathered and their schedules are updated. If the schedule would become empty as a result of one of these updates it would be deleted. Additionally if a schedule previously did not exist when attempting to be updated, a new one would be created.

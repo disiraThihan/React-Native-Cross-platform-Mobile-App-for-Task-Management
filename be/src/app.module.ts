@@ -1,0 +1,119 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+
+import { UsersModule } from './users/users.module';
+import { AuthService } from './auth/auth.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersService } from './users/users.service';
+import { TokenService } from './token/token.service';
+import { TokenModule } from './token/token.module';
+import { ConfigModule } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config/dist';
+import { JwtTokenModule } from './jwt-token/jwt-token.module';
+import { JwtTokenService } from './jwt-token/jwt-token.service';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthGuard } from './common/guards/auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { EmailModule } from './email/email.module';
+import { EmailService } from './email/email.service';
+import { ConfigKey } from './common/enums/config-key.enum';
+import { HttpModule } from '@nestjs/axios';
+import { FileModule } from './file/file.module';
+import { TasksModule } from './tasks/tasks.module';
+import { RoomsModule } from './rooms/rooms.module';
+import { SchedulesModule } from './schedules/schedules.module';
+import { RoomsService } from './rooms/rooms.service';
+import { SchedulesService } from './schedules/schedules.service';
+import { TasksService } from './tasks/tasks.service';
+import { LogGuard } from './common/guards/log.guard';
+
+@Module({
+  imports: [
+    UsersModule,
+    AuthModule,
+    TokenModule,
+    JwtTokenModule,
+    EmailModule,
+    HttpModule,
+    TasksModule,
+    RoomsModule,
+    SchedulesModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    // FileModule.forRootAsync({
+    //   isGlobal: true,
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   useFactory: async (configService: ConfigService) => ({
+    //     authDomain: configService.get(ConfigKey.FIREBASE_AUTH_DOMAIN),
+    //     storageBucket: configService.get(ConfigKey.FIREBASE_BUCKET_NAME),
+    //     projectId: configService.get(ConfigKey.FIREBASE_PROJECT_ID),
+    //     appId: configService.get(ConfigKey.FIREBASE_APP_ID),
+    //     apiKey: configService.get(ConfigKey.FIREBASE_API_KEY),
+    //     measurementId: configService.get(ConfigKey.FIREBASE_MEASUREMENT_ID),
+    //     messagingSenderId: configService.get(
+    //       ConfigKey.FIREBASE_MESSAGING_SENDER_ID,
+    //     ),
+    //   }),
+    // }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get(ConfigKey.MONGO_URI),
+      }),
+    }),
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        transport: {
+          host: configService.get(ConfigKey.SMTP_HOST),
+          port: 465,
+          secure: true,
+          auth: {
+            user: configService.get(ConfigKey.SMTP_USER),
+            pass: configService.get(ConfigKey.SMTP_PASS),
+          },
+          connectionTimeout: 1 * 60 * 1000,
+        },
+        defaults: {
+          from: '"nest-modules" <modules@nestjs.com>',
+        },
+        template: {
+          dir: __dirname + './../assets/templates',
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+      }),
+    }),
+  ],
+  providers: [
+    AuthService,
+    UsersService,
+    TokenService,
+    JwtTokenService,
+    EmailService,
+    RoomsService,
+    SchedulesService,
+    TasksService,
+    {
+      provide: APP_GUARD,
+      useClass: LogGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+})
+export class AppModule {}
